@@ -1,70 +1,74 @@
-# Seekly — Detail Page Enhancement (Zip 2 of 2)
+SEEKLY
 
-## What This Adds
+An AI-powered app discovery engine. Describe what you want to do in plain language — "edit videos on my phone," "split a bill with friends," "learn guitar" — and Seekly recommends the apps that actually fit, with a clear explanation of why each one made the list.
 
-Tap any app on home or search → modal now shows:
 
-1. **WHY IT FITS** (only on search results) — existing
-2. **ABOUT** — existing
-3. **WHAT YOU CAN DO** ✨ NEW
-   - 3-4 specific actions tied to your search context
-   - e.g., for "edit videos" → CapCut shows "Add transitions and music to your phone clips"
-4. **THINGS TO KNOW** ✨ NEW
-   - Free vs paid, account requirements, offline support, ads, privacy
-   - Honest, concise practical info
-5. **COMMON QUESTIONS** ✨ NEW
-   - 3 collapsible Q&A items (tap to expand)
-   - Real questions like "What's the catch with the free plan?"
-6. **AVAILABLE ON** — existing
 
-All AI-generated. Cached so revisiting an app loads instantly.
+WHAT IT DOES
 
-## 📁 Files
+- Natural-language search — type a goal instead of guessing keywords, and get a ranked list of relevant apps.
+- Why it fits — every result comes with a short, specific reason tied to your search.
+- Detailed app pages — tap any result to see what you can do with the app, the practical things to know (free vs paid, accounts, offline support, ads, privacy), and answers to the questions people actually ask.
+- Deep linking — open an app's store page directly from a result.
+- Fast and cached — detail pages load instantly after the first view, since AI responses are cached per app and search.
 
-### Backend (1 file — REPLACES, includes home + new endpoint)
-| File | Replaces |
-|---|---|
-| `server.js` | `C:\Users\ashis\find-the-app-backend\server.js` |
 
-### Frontend (3 files)
-| File | Location |
-|---|---|
-| `App.js` | `C:\Users\ashis\Seekly\App.js` (replace) |
-| `api.js` | `C:\Users\ashis\Seekly\api.js` (replace) |
-| `components/AppDetailModal.js` | replace |
-| `components/QuestionItem.js` | NEW |
+TECH STACK
 
-## Deploy
+Frontend
+- React Native (Expo)
+- Built and distributed with EAS
 
-```
-cd C:\Users\ashis\find-the-app-backend
-railway up
-```
+Backend
+- Node.js / Express
+- Groq API for the language model
+- Deployed on Railway
 
-Then in Seekly project:
-```
-cd C:\Users\ashis\Seekly
-npx expo start
-```
 
-Reload Expo on your phone, tap any app to see the new sections.
+RUNNING IT LOCALLY
 
-## How It Works
+You'll need Node.js and the Expo CLI installed.
 
-When you tap an app:
-1. Modal opens immediately with hero + basic info (instant, no wait)
-2. In the background, fetches details from backend (~2-3 seconds first time)
-3. Use cases / things to know / questions appear as they arrive
-4. After loading once, cached forever — instant next time
+Backend
 
-## Cost
+    cd backend
+    npm install
 
-Each detail fetch = ~1 AI call. Cached per (app + search query) combo. So if 100 users tap Spotify after searching "music", that's 1 AI call total (cached for everyone).
+Create a .env file in the backend directory:
 
-## When Ready
+    GROQ_API_KEY=your_groq_api_key
+    PORT=4000
 
-Rebuild APK with:
-```
-set EAS_NO_VCS=1
-eas build --profile preview --platform android
-```
+Then start the server:
+
+    npm start
+
+Frontend
+
+    cd Seekly
+    npm install
+    npx expo start
+
+Scan the QR code with the Expo Go app on your phone, or run it on an emulator. Point the frontend at your backend by setting the API base URL in api.js.
+
+
+DEPLOYMENT
+
+The backend is deployed on Railway:
+
+    railway up
+
+The Android build is produced with EAS:
+
+    eas build --profile preview --platform android
+
+
+HOW THE DETAIL PAGES WORK
+
+Tapping an app opens the modal immediately with the hero image and basic info, so there's no waiting. In the background it fetches the AI-generated sections (use cases, things to know, common questions), which fill in as they arrive — usually within a couple of seconds the first time. Responses are cached per app-and-search combination, so the same lookup is instant for everyone afterward, and one popular app costs a single AI call rather than one per user.
+
+
+STATUS
+
+Seekly is an active personal project. 
+
