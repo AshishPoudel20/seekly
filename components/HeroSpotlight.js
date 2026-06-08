@@ -5,20 +5,19 @@ import {
   StyleSheet,
   Pressable,
   Animated,
-  Dimensions,
-  Linking,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import PosterArt from './PosterArt';
+import { impactMedium } from '../utils/haptics';
+import { getPlatforms } from '../utils/appData';
 import { COLORS } from '../theme';
 import { openStorePage } from '../utils/storeLink';
+import { useLayoutWidth } from '../utils/layout';
 
-const { width } = Dimensions.get('window');
 const HERO_HEIGHT = 540;
 
 export default function HeroSpotlight({ app, contextLine }) {
+  const width = useLayoutWidth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -30,16 +29,16 @@ export default function HeroSpotlight({ app, contextLine }) {
   }, [app?.id]);
 
   const handleGet = async () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    impactMedium();
     openStorePage(app);
   };
 
   if (!app) return null;
 
+  const platforms = getPlatforms(app);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width, height: HERO_HEIGHT }]}>
       <PosterArt app={app} width={width} height={HERO_HEIGHT} size="hero" />
 
       <LinearGradient
@@ -68,10 +67,10 @@ export default function HeroSpotlight({ app, contextLine }) {
           <Text style={styles.meta}>{app.category}</Text>
           <View style={styles.metaDot} />
           <Text style={styles.meta}>{app.pricing}</Text>
-          {app.platforms && app.platforms.length > 0 && (
+          {platforms.length > 0 && (
             <>
               <View style={styles.metaDot} />
-              <Text style={styles.meta}>{app.platforms.slice(0, 2).join(' · ')}</Text>
+              <Text style={styles.meta}>{platforms.slice(0, 2).join(' · ')}</Text>
             </>
           )}
         </View>
@@ -93,7 +92,7 @@ export default function HeroSpotlight({ app, contextLine }) {
 }
 
 const styles = StyleSheet.create({
-  container: { width, height: HERO_HEIGHT, backgroundColor: COLORS.bg },
+  container: { backgroundColor: COLORS.bg },
   scrim: {
     position: 'absolute',
     left: 0, right: 0, bottom: 0,

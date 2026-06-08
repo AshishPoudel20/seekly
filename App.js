@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  BackHandler,
+  Platform,
 } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
@@ -24,7 +26,7 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { TopBar, SearchOverlay } from './components/TopBar';
-import SplashScreen from './components/SplashScreen';
+import HomeScreen from './components/HomeScreen';
 import HeroSpotlight from './components/HeroSpotlight';
 import AppListItem from './components/AppListItem';
 import AppDetailModal from './components/AppDetailModal';
@@ -32,9 +34,10 @@ import LoadingOverlay from './components/LoadingOverlay';
 
 import { COLORS } from './theme';
 import { searchApps } from './api';
+import { WEB_MAX_WIDTH } from './utils/layout';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Fraunces_400Regular,
     Fraunces_500Medium,
     Fraunces_600SemiBold,
@@ -46,6 +49,7 @@ export default function App() {
     Inter_800ExtraBold,
   });
 
+  const [view, setView] = useState('home');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -65,22 +69,47 @@ export default function App() {
         featured: result.featured,
         apps: result.apps || [],
       });
+      setView('results');
     } catch (e) {
       setError(e.message);
       setData(null);
+      setView('error');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  if (!fontsLoaded) {
+  const handleHome = useCallback(() => {
+    setView('home');
+    setData(null);
+    setError(null);
+    setCurrentQuery('');
+    setSelectedApp(null);
+    setSearchOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const handleBackPress = () => {
+      if (selectedApp) { setSelectedApp(null); return true; }
+      if (searchOpen) { setSearchOpen(false); return true; }
+      if (view !== 'home') { handleHome(); return true; }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => sub.remove();
+  }, [selectedApp, searchOpen, view, handleHome]);
+
+  if (!fontsLoaded && !fontError) {
     return <View style={{ flex: 1, backgroundColor: COLORS.bg }} />;
   }
 
   let body;
   if (loading) {
     body = <LoadingOverlay />;
-  } else if (error) {
+  } else if (view === 'error') {
     body = (
       <View style={styles.errorScreen}>
         <Text style={styles.errorTitle}>NO SIGNAL</Text>
@@ -88,27 +117,42 @@ export default function App() {
         <Text style={styles.errorHint}>
           Check your internet connection and try again.
         </Text>
-        <Pressable onPress={() => setSearchOpen(true)} style={styles.retryBtn}>
-          <Text style={styles.retryText}>TRY AGAIN</Text>
-        </Pressable>
+        <View style={styles.errorActions}>
+          <Pressable
+            onPress={handleHome}
+            style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.homeBtnText}>← HOME</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSearchOpen(true)}
+            style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.retryText}>TRY AGAIN</Text>
+          </Pressable>
+        </View>
       </View>
     );
-  } else if (!data) {
-    body = <SplashScreen onSearchPress={() => setSearchOpen(true)} />;
-  } else {
+  } else if (view === 'home') {
+    body = (
+      <HomeScreen
+        onSearchPress={() => setSearchOpen(true)}
+        onAppPress={setSelectedApp}
+      />
+    );
+  } else if (view === 'results') {
     body = (
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60 }}
       >
-        {data.featured && (
+        {data?.featured && (
           <HeroSpotlight app={data.featured} contextLine={data.contextLine} />
         )}
 
         <View style={styles.listWrap}>
-          {/* Context headline for the list */}
-          {data.contextLine && data.apps.length > 0 && (
+          {data?.contextLine && data?.apps?.length > 0 && (
             <View style={styles.listHeader}>
               <View style={styles.listHeaderLine} />
               <Text style={styles.listHeaderText}>
@@ -120,7 +164,7 @@ export default function App() {
             </View>
           )}
 
-          {data.apps.map((app, i) => (
+          {data?.apps?.map((app, i) => (
             <AppListItem
               key={`${app.id || app.name}-${i}`}
               app={app}
@@ -129,12 +173,18 @@ export default function App() {
             />
           ))}
 
-          {(!data.featured && data.apps.length === 0) && (
+          {(!data?.featured && data?.apps?.length === 0) && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>NOTHING FOUND</Text>
               <Text style={styles.emptyText}>
                 Try rephrasing your search.
               </Text>
+              <Pressable
+                onPress={handleHome}
+                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed, { marginTop: 24 }]}
+              >
+                <Text style={styles.homeBtnText}>← HOME</Text>
+              </Pressable>
             </View>
           )}
         </View>
@@ -142,33 +192,53 @@ export default function App() {
     );
   }
 
+  const showTopBar = (view === 'results' || view === 'error') && !loading;
+
+  const shellStyle = Platform.OS === 'web' ? styles.webOuter : null;
+  const frameStyle = Platform.OS === 'web' ? styles.webFrame : null;
+
   return (
-    <View style={styles.container}>
-      <ExpoStatusBar style="light" />
-      {body}
+    <View style={[styles.container, shellStyle]}>
+      <View style={[styles.container, frameStyle]}>
+        <ExpoStatusBar style="light" />
+        {body}
 
-      {data && !loading && (
-        <TopBar onSearchPress={() => setSearchOpen(true)} />
-      )}
+        {showTopBar && (
+          <TopBar
+            onSearchPress={() => setSearchOpen(true)}
+            onBackPress={handleHome}
+            showBack={true}
+          />
+        )}
 
-      <SearchOverlay
-        visible={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSearch={handleSearch}
-        loading={loading}
-      />
+        <SearchOverlay
+          visible={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          onSearch={handleSearch}
+          loading={loading}
+        />
 
-      <AppDetailModal
-        app={selectedApp}
-        visible={!!selectedApp}
-        onClose={() => setSelectedApp(null)}
-      />
+        <AppDetailModal
+          app={selectedApp}
+          query={currentQuery || null}
+          visible={!!selectedApp}
+          onClose={() => setSelectedApp(null)}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
+  webOuter: {
+    alignItems: 'center',
+    backgroundColor: '#06040c',
+  },
+  webFrame: {
+    width: '100%',
+    maxWidth: WEB_MAX_WIDTH,
+  },
   scroll: { flex: 1 },
   listWrap: {
     paddingTop: 28,
@@ -245,6 +315,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 30,
   },
+  errorActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  homeBtn: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 100,
+  },
+  homeBtnText: {
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize: 13,
+    color: COLORS.text,
+    letterSpacing: 1.5,
+  },
   retryBtn: {
     backgroundColor: COLORS.accent,
     paddingHorizontal: 28,
@@ -257,4 +345,5 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 2,
   },
+  pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
 });

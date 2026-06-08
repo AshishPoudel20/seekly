@@ -1,68 +1,70 @@
-# Seekly 🟣
+# Seekly — Detail Page Enhancement (Zip 2 of 2)
 
-*The app you need, for anything you do.*
+## What This Adds
 
-## Rebranded from FindFlix
+Tap any app on home or search → modal now shows:
 
-Complete rebuild with:
-- 🟣 **Tyrian purple** aesthetic (imperial, refined)
-- 📱 **Simpler layout** — hero card + vertical list of alternatives
-- 💬 **Contextual reasons** inside each card (AI explains why it fits YOUR search)
-- ✨ **Fraunces** serif for impact + **Inter** sans for UI
+1. **WHY IT FITS** (only on search results) — existing
+2. **ABOUT** — existing
+3. **WHAT YOU CAN DO** ✨ NEW
+   - 3-4 specific actions tied to your search context
+   - e.g., for "edit videos" → CapCut shows "Add transitions and music to your phone clips"
+4. **THINGS TO KNOW** ✨ NEW
+   - Free vs paid, account requirements, offline support, ads, privacy
+   - Honest, concise practical info
+5. **COMMON QUESTIONS** ✨ NEW
+   - 3 collapsible Q&A items (tap to expand)
+   - Real questions like "What's the catch with the free plan?"
+6. **AVAILABLE ON** — existing
 
-## 📁 What to Do
+All AI-generated. Cached so revisiting an app loads instantly.
 
-### Option A: Full Replace (Recommended)
-1. Unzip `Seekly.zip`
-2. **Rename your folder** `C:\Users\ashis\FindTheApp` → `C:\Users\ashis\Seekly-old` (keep as backup)
-3. Move the new `Seekly` folder to `C:\Users\ashis\Seekly`
-4. Install dependencies:
-   ```
-   cd C:\Users\ashis\Seekly
-   npm install
-   ```
-5. Backend replacement:
-   - Copy `server.js` from the Seekly folder
-   - Paste into `C:\Users\ashis\find-the-app-backend\` (replace existing)
-   - Railway will auto-redeploy when you push the update with:
-     ```
-     cd C:\Users\ashis\find-the-app-backend
-     railway up
-     ```
+## 📁 Files
 
-### Option B: Keep Existing Folder
-1. Copy all files from the zip into your existing `C:\Users\ashis\FindTheApp` folder
-2. Let it overwrite everything
-3. `npm install`
-4. Update backend and redeploy to Railway
+### Backend (1 file — REPLACES, includes home + new endpoint)
+| File | Replaces |
+|---|---|
+| `server.js` | `C:\Users\ashis\find-the-app-backend\server.js` |
 
-### Test
+### Frontend (3 files)
+| File | Location |
+|---|---|
+| `App.js` | `C:\Users\ashis\Seekly\App.js` (replace) |
+| `api.js` | `C:\Users\ashis\Seekly\api.js` (replace) |
+| `components/AppDetailModal.js` | replace |
+| `components/QuestionItem.js` | NEW |
+
+## Deploy
+
 ```
+cd C:\Users\ashis\find-the-app-backend
+railway up
+```
+
+Then in Seekly project:
+```
+cd C:\Users\ashis\Seekly
 npx expo start
 ```
 
-### Build new APK
+Reload Expo on your phone, tap any app to see the new sections.
+
+## How It Works
+
+When you tap an app:
+1. Modal opens immediately with hero + basic info (instant, no wait)
+2. In the background, fetches details from backend (~2-3 seconds first time)
+3. Use cases / things to know / questions appear as they arrive
+4. After loading once, cached forever — instant next time
+
+## Cost
+
+Each detail fetch = ~1 AI call. Cached per (app + search query) combo. So if 100 users tap Spotify after searching "music", that's 1 AI call total (cached for everyone).
+
+## When Ready
+
+Rebuild APK with:
 ```
 set EAS_NO_VCS=1
 eas build --profile preview --platform android
-```
-
-The app name in the APK will now be **Seekly** with the new bundle ID `com.seekly.app`.
-
-## 📁 Structure
-
-```
-Seekly/
-├── App.js
-├── theme.js                  ← Tyrian purple palette
-├── api.js                    ← Railway URL already set
-├── server.js                 ← For the backend folder
-└── components/
-    ├── SplashScreen.js       ← New "seekly" brand intro
-    ├── TopBar.js             ← Seekly logo + search
-    ├── HeroSpotlight.js      ← Top pick hero
-    ├── AppListItem.js        ← Flat list card w/ contextual reason
-    ├── AppDetailModal.js     ← Tap-to-expand detail
-    ├── LoadingOverlay.js     ← "SEEKING..." loader
-    └── PosterArt.js          ← Animated poster art
 ```

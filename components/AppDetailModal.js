@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,47 +6,87 @@ import {
   Modal,
   Pressable,
   Animated,
-  Dimensions,
-  Linking,
+  useWindowDimensions,
   Platform,
   ScrollView,
+  ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import PosterArt from './PosterArt';
+import { impactMedium } from '../utils/haptics';
+import QuestionItem from './QuestionItem';
 import { COLORS } from '../theme';
 import { openStorePage } from '../utils/storeLink';
+import { fetchAppDetails } from '../api';
+import { useLayoutWidth } from '../utils/layout';
+import { getPlatforms } from '../utils/appData';
 
-const { width, height } = Dimensions.get('window');
-
-export default function AppDetailModal({ app, visible, onClose }) {
-  const slideAnim = useRef(new Animated.Value(height)).current;
+export default function AppDetailModal({ app, query, visible, onClose }) {
+  const { height: windowHeight } = useWindowDimensions();
+  const width = useLayoutWidth();
+  const isWeb = Platform.OS === 'web';
+  const slideAnim = useRef(new Animated.Value(isWeb ? 0 : windowHeight)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [details, setDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // Fetch details when modal opens with new app
+  useEffect(() => {
+    if (visible && app) {
+      setDetails(null);
+      setDetailsLoading(true);
+      fetchAppDetails(app, query)
+        .then(setDetails)
+        .catch(err => console.warn('Details fetch failed:', err.message))
+        .finally(() => setDetailsLoading(false));
+    }
+  }, [visible, app?.id, app?.name, query]);
+
+  const handleClose = useCallback(() => {
+    const animations = [
+      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+    ];
+    if (!isWeb) {
+      animations.unshift(
+        Animated.timing(slideAnim, { toValue: windowHeight, duration: 250, useNativeDriver: true })
+      );
+    }
+    Animated.parallel(animations).start(() => onClose());
+  }, [fadeAnim, isWeb, onClose, slideAnim, windowHeight]);
 
   useEffect(() => {
     if (visible) {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+      if (!isWeb) {
+        slideAnim.setValue(windowHeight);
+      }
+      const animations = [
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-      ]).start();
+      ];
+      if (!isWeb) {
+        animations.unshift(
+          Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true })
+        );
+      }
+      Animated.parallel(animations).start();
     } else {
-      slideAnim.setValue(height);
+      slideAnim.setValue(isWeb ? 0 : windowHeight);
       fadeAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, isWeb, windowHeight, fadeAnim, slideAnim]);
 
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: height, duration: 250, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-    ]).start(() => onClose());
-  };
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, handleClose]);
 
   const handleGet = () => {
     if (!app) return;
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    impactMedium();
     openStorePage(app);
   };
 
@@ -56,33 +96,40 @@ export default function AppDetailModal({ app, visible, onClose }) {
     app.pricing === 'Free' ? COLORS.success :
     app.pricing === 'Freemium' ? COLORS.gold :
     COLORS.accent;
+  const platforms = getPlatforms(app);
 
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
-      </Animated.View>
-
+  const sheet = (
       <Animated.View
         style={[
           styles.sheet,
-          { transform: [{ translateY: slideAnim }] },
+          isWeb && styles.sheetWeb,
+          !isWeb && { transform: [{ translateY: slideAnim }] },
+          isWeb && { opacity: fadeAnim, maxHeight: Math.min(windowHeight * 0.9, 820) },
         ]}
       >
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <Pressable onPress={handleClose} style={styles.backBtn} hitSlop={10}>
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backText}>BACK</Text>
+          </Pressable>
+          <Pressable onPress={handleClose} style={styles.closeBtn} hitSlop={10}>
+            <Text style={styles.closeText}>✕</Text>
+          </Pressable>
+        </View>
+
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <PosterArt app={app} width={width} height={360} size="hero" />
+          <View style={[styles.hero, { width, height: isWeb ? 280 : 360 }]}>
+            <PosterArt app={app} width={width} height={isWeb ? 280 : 360} size="hero" />
             <LinearGradient
               colors={['transparent', 'rgba(10,6,18,0.6)', COLORS.bg]}
               locations={[0.3, 0.7, 1]}
               style={styles.heroScrim}
             />
-            <Pressable onPress={handleClose} style={styles.closeBtn}>
-              <Text style={styles.closeText}>✕</Text>
-            </Pressable>
           </View>
 
           <View style={styles.content}>
+            {/* Title block */}
             <Text style={styles.name}>{app.name}</Text>
             {app.tagline && <Text style={styles.tagline}>"{app.tagline}"</Text>}
 
@@ -94,6 +141,7 @@ export default function AppDetailModal({ app, visible, onClose }) {
               <Text style={styles.categoryText}>{app.category?.toUpperCase()}</Text>
             </View>
 
+            {/* Get button */}
             <Pressable
               onPress={handleGet}
               style={({ pressed }) => [styles.getBtn, pressed && styles.pressed]}
@@ -102,6 +150,7 @@ export default function AppDetailModal({ app, visible, onClose }) {
               <Text style={styles.getBtnArrow}>→</Text>
             </Pressable>
 
+            {/* Why it fits (only when search context) */}
             {app.reason && (
               <View style={styles.reasonBox}>
                 <Text style={styles.reasonLabel}>WHY IT FITS</Text>
@@ -109,14 +158,72 @@ export default function AppDetailModal({ app, visible, onClose }) {
               </View>
             )}
 
+            {/* About */}
             <Text style={styles.sectionLabel}>ABOUT</Text>
             <Text style={styles.description}>{app.description}</Text>
 
-            {app.platforms && app.platforms.length > 0 && (
+            {/* === USE CASES === */}
+            {detailsLoading && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={COLORS.accent} />
+                <Text style={styles.loadingText}>Loading more details...</Text>
+              </View>
+            )}
+
+            {details?.useCases?.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>WHAT YOU CAN DO</Text>
+                <View style={styles.useCasesList}>
+                  {details.useCases.map((uc, i) => (
+                    <View key={i} style={styles.useCaseRow}>
+                      <Text style={styles.useCaseIcon}>{uc.icon}</Text>
+                      <Text style={styles.useCaseText}>{uc.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* === THINGS TO KNOW === */}
+            {details?.thingsToKnow?.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>THINGS TO KNOW</Text>
+                <View style={styles.thingsList}>
+                  {details.thingsToKnow.map((t, i) => (
+                    <View key={i} style={styles.thingRow}>
+                      <Text style={styles.thingIcon}>{t.icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.thingLabel}>{t.label}</Text>
+                        <Text style={styles.thingValue}>{t.value}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* === COMMON QUESTIONS === */}
+            {details?.questions?.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>COMMON QUESTIONS</Text>
+                <Text style={styles.qHint}>Tap any question to expand</Text>
+                {details.questions.map((qa, i) => (
+                  <QuestionItem
+                    key={i}
+                    index={i}
+                    question={qa.q}
+                    answer={qa.a}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Platforms */}
+            {platforms.length > 0 && (
               <>
                 <Text style={styles.sectionLabel}>AVAILABLE ON</Text>
                 <View style={styles.platforms}>
-                  {app.platforms.map(p => (
+                  {platforms.map(p => (
                     <View key={p} style={styles.platformChip}>
                       <Text style={styles.platformText}>{p}</Text>
                     </View>
@@ -125,10 +232,25 @@ export default function AppDetailModal({ app, visible, onClose }) {
               </>
             )}
 
-            <View style={{ height: 40 }} />
+            <View style={{ height: 60 }} />
           </View>
         </ScrollView>
       </Animated.View>
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+      </Animated.View>
+
+      {isWeb ? (
+        <View style={styles.webSheetWrap} pointerEvents="box-none">
+          {sheet}
+        </View>
+      ) : (
+        sheet
+      )}
     </Modal>
   );
 }
@@ -146,15 +268,56 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     overflow: 'hidden',
   },
-  hero: { width, height: 360 },
-  heroScrim: {
+  webSheetWrap: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  sheetWeb: {
+    position: 'relative',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    maxWidth: 720,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  topBar: {
     position: 'absolute',
-    left: 0, right: 0, bottom: 0,
-    height: '60%',
+    top: 0, left: 0, right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+    zIndex: 10,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(10,6,18,0.7)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 100,
+  },
+  backArrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 18,
+    color: COLORS.text,
+  },
+  backText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: COLORS.text,
+    letterSpacing: 1.2,
   },
   closeBtn: {
-    position: 'absolute',
-    top: 16, right: 16,
     width: 36, height: 36,
     borderRadius: 18,
     backgroundColor: 'rgba(10,6,18,0.7)',
@@ -162,6 +325,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeText: { color: COLORS.text, fontSize: 18 },
+  hero: {},
+  heroScrim: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0,
+    height: '60%',
+  },
   content: { padding: 24, marginTop: -80 },
   name: {
     fontFamily: 'Fraunces_900Black',
@@ -256,20 +425,103 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   sectionLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    color: COLORS.muted,
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize: 11,
+    color: COLORS.accentGlow,
     letterSpacing: 2,
-    marginBottom: 8,
-    marginTop: 6,
+    marginBottom: 10,
+    marginTop: 18,
   },
   description: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     color: COLORS.textDim,
     lineHeight: 21,
-    marginBottom: 20,
+    marginBottom: 4,
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 20,
+    paddingVertical: 14,
+  },
+  loadingText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: COLORS.muted,
+    fontStyle: 'italic',
+  },
+  // Use cases
+  useCasesList: {
+    gap: 10,
+    marginBottom: 4,
+  },
+  useCaseRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+  },
+  useCaseIcon: {
+    fontSize: 22,
+    marginTop: -2,
+  },
+  useCaseText: {
+    flex: 1,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  // Things to know
+  thingsList: {
+    gap: 8,
+    marginBottom: 4,
+  },
+  thingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+  },
+  thingIcon: {
+    fontSize: 18,
+    marginTop: 1,
+  },
+  thingLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: COLORS.accentGlow,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  thingValue: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: COLORS.textDim,
+    lineHeight: 18,
+  },
+  // Q&A
+  qHint: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: COLORS.muted,
+    fontStyle: 'italic',
+    marginBottom: 10,
+    marginTop: -4,
+  },
+  // Platforms
   platforms: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   platformChip: {
     backgroundColor: COLORS.surface,

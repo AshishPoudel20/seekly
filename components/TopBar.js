@@ -7,15 +7,12 @@ import {
   TextInput,
   Animated,
   Modal,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
 
-const { width } = Dimensions.get('window');
-
-export function TopBar({ onSearchPress }) {
+export function TopBar({ onSearchPress, onBackPress, showBack = false }) {
   return (
     <View style={styles.topBar}>
       <LinearGradient
@@ -23,13 +20,24 @@ export function TopBar({ onSearchPress }) {
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.topBarInner}>
-        <View style={styles.logoWrap}>
-          <View style={styles.logoMark}>
-            <Text style={styles.logoMarkText}>S</Text>
+        {showBack ? (
+          <Pressable
+            onPress={onBackPress}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+            hitSlop={10}
+          >
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backText}>HOME</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.logoWrap}>
+            <View style={styles.logoMark}>
+              <Text style={styles.logoMarkText}>S</Text>
+            </View>
+            <Text style={styles.logo}>seekly</Text>
           </View>
-          <Text style={styles.logo}>seekly</Text>
-        </View>
-        <Pressable onPress={onSearchPress} style={styles.searchIconBtn}>
+        )}
+        <Pressable onPress={onSearchPress} style={styles.searchIconBtn} hitSlop={10}>
           <Text style={styles.searchIcon}>⌕</Text>
         </Pressable>
       </View>
@@ -91,7 +99,10 @@ export function SearchOverlay({ visible, onClose, onSearch, loading }) {
         ]}
       >
         <View style={styles.searchRow}>
-          <Text style={styles.searchIconInline}>⌕</Text>
+          {/* Back arrow at the start */}
+          <Pressable onPress={onClose} hitSlop={10}>
+            <Text style={styles.searchBackArrow}>←</Text>
+          </Pressable>
           <TextInput
             ref={inputRef}
             value={query}
@@ -104,9 +115,11 @@ export function SearchOverlay({ visible, onClose, onSearch, loading }) {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Pressable onPress={onClose}>
-            <Text style={styles.cancelBtn}>CANCEL</Text>
-          </Pressable>
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')} hitSlop={10}>
+              <Text style={styles.clearBtn}>✕</Text>
+            </Pressable>
+          )}
         </View>
 
         <Text style={styles.suggestLabel}>POPULAR SEARCHES</Text>
@@ -131,7 +144,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0,
     zIndex: 10,
-    paddingTop: Platform.OS === 'ios' ? 50 : 34,
+    paddingTop: Platform.OS === 'web' ? 20 : Platform.OS === 'ios' ? 50 : 34,
     paddingBottom: 14,
   },
   topBarInner: {
@@ -164,6 +177,25 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: -0.5,
   },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingRight: 12,
+  },
+  backArrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 22,
+    color: COLORS.text,
+  },
+  backText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: COLORS.text,
+    letterSpacing: 1.5,
+  },
+  pressed: { opacity: 0.6 },
   searchIconBtn: { padding: 4 },
   searchIcon: {
     fontSize: 26,
@@ -176,7 +208,7 @@ const styles = StyleSheet.create({
   searchPanel: {
     position: 'absolute',
     left: 0, right: 0, top: 0,
-    paddingTop: Platform.OS === 'ios' ? 60 : 44,
+    paddingTop: Platform.OS === 'web' ? 24 : Platform.OS === 'ios' ? 60 : 44,
     paddingHorizontal: 20,
     paddingBottom: 30,
     backgroundColor: COLORS.bg,
@@ -186,14 +218,15 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 14,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.accent,
     paddingBottom: 12,
     marginBottom: 28,
   },
-  searchIconInline: {
-    fontSize: 22,
+  searchBackArrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 26,
     color: COLORS.accent,
   },
   input: {
@@ -203,11 +236,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingVertical: 6,
   },
-  cancelBtn: {
+  clearBtn: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 11,
-    color: COLORS.accentGlow,
-    letterSpacing: 1.5,
+    fontSize: 18,
+    color: COLORS.muted,
+    paddingHorizontal: 4,
   },
   suggestLabel: {
     fontFamily: 'Inter_700Bold',

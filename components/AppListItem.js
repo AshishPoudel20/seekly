@@ -6,11 +6,10 @@ import {
   Pressable,
   Animated,
   Image,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import { COLORS } from '../theme';
+import { impactLight } from '../utils/haptics';
 import { getAppAccent } from '../utils/gradients';
 import { openStorePage } from '../utils/storeLink';
 
@@ -46,9 +45,7 @@ export default function AppListItem({ app, index, onPress }) {
 
   const handleGet = (e) => {
     e.stopPropagation?.();
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    impactLight();
     openStorePage(app);
   };
 

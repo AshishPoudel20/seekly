@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { COLORS } from '../theme';
 
-export default function LoadingOverlay() {
+export default function LoadingOverlay({ message = 'SEEKING', subMessage = 'finding your perfect match...' }) {
   const anim1 = useRef(new Animated.Value(0)).current;
   const anim2 = useRef(new Animated.Value(0)).current;
   const anim3 = useRef(new Animated.Value(0)).current;
@@ -28,8 +28,8 @@ export default function LoadingOverlay() {
         <Animated.View style={[styles.bar, { opacity: anim2, transform: [{ scaleY: anim2.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />
         <Animated.View style={[styles.bar, { opacity: anim3, transform: [{ scaleY: anim3.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />
       </View>
-      <Text style={styles.text}>SEEKING</Text>
-      <Text style={styles.subtext}>finding your perfect match...</Text>
+      <Text style={styles.text}>{message}</Text>
+      <Text style={styles.subtext}>{subMessage}</Text>
     </View>
   );
 }
