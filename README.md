@@ -2,7 +2,6 @@
 
 An AI-powered app discovery engine. Describe what you want to do in plain language — "edit videos on my phone," "split a bill with friends," "learn guitar" — and Seekly recommends the apps that actually fit, with a clear explanation of why each one made the list.
 
-<!-- Add a screenshot or short GIF here. Drop the file in the repo (e.g. assets/demo.gif) and link it: ![Seekly demo](assets/demo.gif) -->
 
 ## What it does
 
