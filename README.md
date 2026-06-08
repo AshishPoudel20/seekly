@@ -1,40 +1,38 @@
-SEEKLY
+# Seekly
 
 An AI-powered app discovery engine. Describe what you want to do in plain language — "edit videos on my phone," "split a bill with friends," "learn guitar" — and Seekly recommends the apps that actually fit, with a clear explanation of why each one made the list.
 
+<!-- Add a screenshot or short GIF here. Drop the file in the repo (e.g. assets/demo.gif) and link it: ![Seekly demo](assets/demo.gif) -->
 
+## What it does
 
-WHAT IT DOES
+- **Natural-language search** — type a goal instead of guessing keywords, and get a ranked list of relevant apps.
+- **Why it fits** — every result comes with a short, specific reason tied to your search.
+- **Detailed app pages** — tap any result to see what you can do with the app, the practical things to know (free vs paid, accounts, offline support, ads, privacy), and answers to the questions people actually ask.
+- **Deep linking** — open an app's store page directly from a result.
+- **Fast and cached** — detail pages load instantly after the first view, since AI responses are cached per app and search.
 
-- Natural-language search — type a goal instead of guessing keywords, and get a ranked list of relevant apps.
-- Why it fits — every result comes with a short, specific reason tied to your search.
-- Detailed app pages — tap any result to see what you can do with the app, the practical things to know (free vs paid, accounts, offline support, ads, privacy), and answers to the questions people actually ask.
-- Deep linking — open an app's store page directly from a result.
-- Fast and cached — detail pages load instantly after the first view, since AI responses are cached per app and search.
+## Tech stack
 
-
-TECH STACK
-
-Frontend
+**Frontend**
 - React Native (Expo)
 - Built and distributed with EAS
 
-Backend
+**Backend**
 - Node.js / Express
 - Groq API for the language model
 - Deployed on Railway
 
-
-RUNNING IT LOCALLY
+## Running it locally
 
 You'll need Node.js and the Expo CLI installed.
 
-Backend
+**Backend**
 
     cd backend
     npm install
 
-Create a .env file in the backend directory:
+Create a `.env` file in the backend directory:
 
     GROQ_API_KEY=your_groq_api_key
     PORT=4000
@@ -43,16 +41,15 @@ Then start the server:
 
     npm start
 
-Frontend
+**Frontend**
 
     cd Seekly
     npm install
     npx expo start
 
-Scan the QR code with the Expo Go app on your phone, or run it on an emulator. Point the frontend at your backend by setting the API base URL in api.js.
+Scan the QR code with the Expo Go app on your phone, or run it on an emulator. Point the frontend at your backend by setting the API base URL in `api.js`.
 
-
-DEPLOYMENT
+## Deployment
 
 The backend is deployed on Railway:
 
@@ -62,13 +59,10 @@ The Android build is produced with EAS:
 
     eas build --profile preview --platform android
 
-
-HOW THE DETAIL PAGES WORK
+## How the detail pages work
 
 Tapping an app opens the modal immediately with the hero image and basic info, so there's no waiting. In the background it fetches the AI-generated sections (use cases, things to know, common questions), which fill in as they arrive — usually within a couple of seconds the first time. Responses are cached per app-and-search combination, so the same lookup is instant for everyone afterward, and one popular app costs a single AI call rather than one per user.
 
+## Status
 
-STATUS
-
-Seekly is an active personal project. 
-
+Seekly is an active personal project.
