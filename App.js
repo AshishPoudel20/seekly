@@ -34,6 +34,7 @@ import LoadingOverlay from './components/LoadingOverlay';
 
 import { COLORS } from './theme';
 import { searchApps } from './api';
+import { offlineSearch } from './data/offlineSearch';
 import { WEB_MAX_WIDTH } from './utils/layout';
 
 export default function App() {
@@ -48,6 +49,15 @@ export default function App() {
     Inter_700Bold,
     Inter_800ExtraBold,
   });
+  // Never stay on a blank screen if fonts are slow over tunnel/network
+  const [fontsTimedOut, setFontsTimedOut] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setFontsTimedOut(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const readyToShow = fontsLoaded || !!fontError || fontsTimedOut;
 
   const [view, setView] = useState('home');
   const [data, setData] = useState(null);
@@ -68,12 +78,33 @@ export default function App() {
         contextLine: result.contextLine || '',
         featured: result.featured,
         apps: result.apps || [],
+        offline: false,
       });
       setView('results');
     } catch (e) {
-      setError(e.message);
-      setData(null);
-      setView('error');
+      const msg = e.message || '';
+      const isRateLimit = msg.includes('out of capacity') || msg.includes('Rate limit');
+      const isAiGlitch =
+        msg.includes('invalid JSON') ||
+        msg.includes('Failed to validate JSON') ||
+        msg.includes('Failed to generate JSON') ||
+        msg.includes('malformed');
+      if (isRateLimit || isAiGlitch) {
+        const result = offlineSearch(query);
+        setData({
+          contextLine: isRateLimit
+            ? 'Offline picks (AI limit reached)'
+            : 'Offline picks (AI glitch)',
+          featured: result.featured,
+          apps: result.apps || [],
+          offline: true,
+        });
+        setView('results');
+      } else {
+        setError(msg);
+        setData(null);
+        setView('error');
+      }
     } finally {
       setLoading(false);
     }
@@ -102,98 +133,16 @@ export default function App() {
     return () => sub.remove();
   }, [selectedApp, searchOpen, view, handleHome]);
 
-  if (!fontsLoaded && !fontError) {
-    return <View style={{ flex: 1, backgroundColor: COLORS.bg }} />;
-  }
-
-  let body;
-  if (loading) {
-    body = <LoadingOverlay />;
-  } else if (view === 'error') {
-    body = (
-      <View style={styles.errorScreen}>
-        <Text style={styles.errorTitle}>NO SIGNAL</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <Text style={styles.errorHint}>
-          Check your internet connection and try again.
-        </Text>
-        <View style={styles.errorActions}>
-          <Pressable
-            onPress={handleHome}
-            style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.homeBtnText}>← HOME</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSearchOpen(true)}
-            style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.retryText}>TRY AGAIN</Text>
-          </Pressable>
-        </View>
+  if (!readyToShow) {
+    return (
+      <View style={styles.bootScreen}>
+        <Text style={styles.bootTitle}>seekly</Text>
+        <Text style={styles.bootSub}>loading…</Text>
       </View>
-    );
-  } else if (view === 'home') {
-    body = (
-      <HomeScreen
-        onSearchPress={() => setSearchOpen(true)}
-        onAppPress={setSelectedApp}
-      />
-    );
-  } else if (view === 'results') {
-    body = (
-      <ScrollView
-        style={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 60 }}
-      >
-        {data?.featured && (
-          <HeroSpotlight app={data.featured} contextLine={data.contextLine} />
-        )}
-
-        <View style={styles.listWrap}>
-          {data?.contextLine && data?.apps?.length > 0 && (
-            <View style={styles.listHeader}>
-              <View style={styles.listHeaderLine} />
-              <Text style={styles.listHeaderText}>
-                {data.contextLine}
-              </Text>
-              <Text style={styles.listHeaderSub}>
-                {data.apps.length} alternatives for "{currentQuery}"
-              </Text>
-            </View>
-          )}
-
-          {data?.apps?.map((app, i) => (
-            <AppListItem
-              key={`${app.id || app.name}-${i}`}
-              app={app}
-              index={i}
-              onPress={() => setSelectedApp(app)}
-            />
-          ))}
-
-          {(!data?.featured && data?.apps?.length === 0) && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>NOTHING FOUND</Text>
-              <Text style={styles.emptyText}>
-                Try rephrasing your search.
-              </Text>
-              <Pressable
-                onPress={handleHome}
-                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed, { marginTop: 24 }]}
-              >
-                <Text style={styles.homeBtnText}>← HOME</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      </ScrollView>
     );
   }
 
   const showTopBar = (view === 'results' || view === 'error') && !loading;
-
   const shellStyle = Platform.OS === 'web' ? styles.webOuter : null;
   const frameStyle = Platform.OS === 'web' ? styles.webFrame : null;
 
@@ -201,7 +150,91 @@ export default function App() {
     <View style={[styles.container, shellStyle]}>
       <View style={[styles.container, frameStyle]}>
         <ExpoStatusBar style="light" />
-        {body}
+
+        {loading ? (
+          <LoadingOverlay />
+        ) : view === 'error' ? (
+          <View style={styles.errorScreen}>
+            <Text style={styles.errorTitle}>NO SIGNAL</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorHint}>
+              {error?.includes('daily limit') || error?.includes('offline')
+                ? 'The free AI quota resets every 24 hours. Earlier testing used it up — not just this search.'
+                : 'Check your internet connection and try again.'}
+            </Text>
+            <View style={styles.errorActions}>
+              <Pressable
+                onPress={handleHome}
+                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+              >
+                <Text style={styles.homeBtnText}>← HOME</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setSearchOpen(true)}
+                style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
+              >
+                <Text style={styles.retryText}>TRY AGAIN</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : view === 'results' ? (
+          <ScrollView
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 60 }}
+          >
+            {data?.featured && (
+              <HeroSpotlight
+                app={data.featured}
+                contextLine={data.contextLine}
+                onPress={setSelectedApp}
+              />
+            )}
+
+            <View style={styles.listWrap}>
+              {data?.contextLine && data?.apps?.length > 0 && (
+                <View style={styles.listHeader}>
+                  <View style={styles.listHeaderLine} />
+                  <Text style={styles.listHeaderText}>
+                    {data.contextLine}
+                  </Text>
+                  <Text style={styles.listHeaderSub}>
+                    {data.apps.length} alternatives for "{currentQuery}"
+                  </Text>
+                </View>
+              )}
+
+              {data?.apps?.map((app, i) => (
+                <AppListItem
+                  key={`${app.id || app.name}-${i}`}
+                  app={app}
+                  index={i}
+                  onPress={() => setSelectedApp(app)}
+                />
+              ))}
+
+              {(!data?.featured && data?.apps?.length === 0) && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyTitle}>NOTHING FOUND</Text>
+                  <Text style={styles.emptyText}>
+                    Try rephrasing your search.
+                  </Text>
+                  <Pressable
+                    onPress={handleHome}
+                    style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed, { marginTop: 24 }]}
+                  >
+                    <Text style={styles.homeBtnText}>← HOME</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        ) : (
+          <HomeScreen
+            onSearchPress={() => setSearchOpen(true)}
+            onAppPress={setSelectedApp}
+          />
+        )}
 
         {showTopBar && (
           <TopBar
@@ -231,6 +264,23 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
+  bootScreen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bootTitle: {
+    fontSize: 42,
+    color: COLORS.text,
+    fontWeight: '900',
+    letterSpacing: -1,
+    marginBottom: 8,
+  },
+  bootSub: {
+    fontSize: 14,
+    color: COLORS.muted,
+  },
   webOuter: {
     alignItems: 'center',
     backgroundColor: '#06040c',

@@ -1,14 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Image } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AppIcon from './AppIcon';
 import { getAppGradient, getAppAccent } from '../utils/gradients';
 import { COLORS, GRADIENTS } from '../theme';
 
 export default function PosterArt({ app, width, height, size = 'medium' }) {
   const shimmerAnim = useRef(new Animated.Value(-1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const [iconFailed, setIconFailed] = useState(false);
-
   useEffect(() => {
     const shimmerLoop = Animated.loop(
       Animated.sequence([
@@ -31,10 +30,8 @@ export default function PosterArt({ app, width, height, size = 'medium' }) {
     return () => shimmerLoop.stop();
   }, []);
 
-  const hasIcon = app.iconUrl && !iconFailed;
   const gradientColors = getAppGradient(app);
   const accent = getAppAccent(app);
-  const letter = (app.name || '?').charAt(0).toUpperCase();
 
   const shimmerTranslate = shimmerAnim.interpolate({
     inputRange: [-1, 1],
@@ -78,38 +75,22 @@ export default function PosterArt({ app, width, height, size = 'medium' }) {
         />
 
         <View style={styles.centerWrap}>
-          {hasIcon ? (
-            <>
-              <Image
-                source={{ uri: app.iconUrl }}
-                style={{
-                  width: iconSize,
-                  height: iconSize,
-                  borderRadius: iconSize * 0.22,
-                }}
-                onError={() => setIconFailed(true)}
-              />
-              <View
-                style={[
-                  styles.iconShadow,
-                  {
-                    width: iconSize * 1.1,
-                    height: 20,
-                    bottom: -iconSize * 0.12,
-                  },
-                ]}
-              />
-            </>
-          ) : (
-            <>
-              <Text style={[styles.letter, { fontSize: letterSize, color: accent }]}>
-                {letter}
-              </Text>
-              <Text style={[styles.letterShadow, { fontSize: letterSize }]}>
-                {letter}
-              </Text>
-            </>
-          )}
+          <AppIcon
+            app={app}
+            size={iconSize}
+            borderRadius={iconSize * 0.22}
+            letterSize={letterSize}
+          />
+          <View
+            style={[
+              styles.iconShadow,
+              {
+                width: iconSize * 1.1,
+                height: 20,
+                bottom: -iconSize * 0.12,
+              },
+            ]}
+          />
         </View>
 
         <Animated.View

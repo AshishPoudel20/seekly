@@ -1,19 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
-  Image,
   Animated,
 } from 'react-native';
+import AppIcon from './AppIcon';
 import { COLORS } from '../theme';
-import { getAppAccent } from '../utils/gradients';
 
 const CARD_W = 110;
 
 export default function HomeAppCard({ app, index, onPress }) {
-  const [iconFailed, setIconFailed] = useState(false);
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -33,9 +31,6 @@ export default function HomeAppCard({ app, index, onPress }) {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 4 }).start();
   };
 
-  const hasIcon = app.iconUrl && !iconFailed;
-  const accent = getAppAccent(app);
-
   return (
     <Animated.View style={{ opacity, transform: [{ scale }] }}>
       <Pressable
@@ -45,19 +40,7 @@ export default function HomeAppCard({ app, index, onPress }) {
         style={styles.card}
       >
         <View style={styles.iconWrap}>
-          {hasIcon ? (
-            <Image
-              source={{ uri: app.iconUrl }}
-              style={styles.icon}
-              onError={() => setIconFailed(true)}
-            />
-          ) : (
-            <View style={[styles.iconFallback, { backgroundColor: accent }]}>
-              <Text style={styles.iconLetter}>
-                {(app.name || '?').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+          <AppIcon app={app} size={76} borderRadius={20} />
         </View>
 
         <Text style={styles.name} numberOfLines={1}>{app.name}</Text>
@@ -86,21 +69,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
-  },
-  icon: {
-    width: 76,
-    height: 76,
-  },
-  iconFallback: {
-    width: 76,
-    height: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconLetter: {
-    fontFamily: 'Fraunces_900Black',
-    fontSize: 32,
-    color: '#fff',
   },
   name: {
     fontFamily: 'Inter_700Bold',

@@ -6,96 +6,46 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  RefreshControl,
   Platform,
 } from 'react-native';
 import HomeCategoryRow from './HomeCategoryRow';
-import LoadingOverlay from './LoadingOverlay';
 import { COLORS } from '../theme';
 import { fetchHome } from '../api';
-import { FALLBACK_HOME } from '../data/fallbackHome';
+import {
+  getInstantHome,
+  hasHomeFetchedOnce,
+  loadHomeOnce,
+} from '../utils/homeCache';
 
 export default function HomeScreen({ onSearchPress, onAppPress }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [data, setData] = useState(getInstantHome);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    // Only curate trending once per app session — never again when returning from search
+    if (hasHomeFetchedOnce() && getInstantHome()) {
+      setData(getInstantHome());
+      return;
+    }
 
-  const load = async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchHome();
+    let cancelled = false;
+    loadHomeOnce(fetchHome).then((result) => {
+      if (cancelled) return;
       setData(result);
-    } catch (e) {
-      // Use built-in home data when AI backend is rate-limited or down
-      setData(FALLBACK_HOME);
-      setError(null);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+    });
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  useEffect(() => {
-    if (data) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [data]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fadeAnim.setValue(0);
-    load(true);
-  };
-
-  if (loading) return <LoadingOverlay message="LOADING" subMessage="curating your trending..." />;
-
-  if (error) {
-    return (
-      <View style={styles.errorScreen}>
-        <Text style={styles.errorTitle}>NO SIGNAL</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <Text style={styles.errorHint}>
-          Check your internet connection and try again.
-        </Text>
-        <Pressable
-          onPress={() => load()}
-          style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
-        >
-          <Text style={styles.retryText}>TRY AGAIN</Text>
-        </Pressable>
-      </View>
-    );
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [fadeAnim]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.accent}
-            colors={[COLORS.accent]}
-          />
-        }
       >
-        {/* Hero header */}
         <View style={styles.hero}>
-          {/* Ambient glow */}
           <View style={styles.glow1} />
           <View style={styles.glow2} />
 
@@ -116,7 +66,6 @@ export default function HomeScreen({ onSearchPress, onAppPress }) {
           </Pressable>
         </View>
 
-        {/* Categories */}
         {data?.categories?.map((cat, i) => (
           <HomeCategoryRow
             key={`${cat.title}-${i}`}
@@ -127,9 +76,7 @@ export default function HomeScreen({ onSearchPress, onAppPress }) {
         ))}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            ✦ pull down to refresh
-          </Text>
+          <Text style={styles.footerText}>✦ seek what you need</Text>
         </View>
       </ScrollView>
     </Animated.View>
@@ -222,45 +169,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.muted,
     letterSpacing: 1.5,
-  },
-  errorScreen: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  errorTitle: {
-    fontFamily: 'Fraunces_900Black',
-    fontSize: 42,
-    color: COLORS.accent,
-    letterSpacing: -1,
-    marginBottom: 16,
-  },
-  errorText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  errorHint: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    color: COLORS.muted,
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  retryBtn: {
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 100,
-  },
-  retryText: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize: 13,
-    color: COLORS.text,
-    letterSpacing: 2,
   },
 });

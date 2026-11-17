@@ -63,7 +63,8 @@ const KNOWN_APPS = {
   spotifyforpodcasters: { androidPackageId: 'com.spotify.s4a', iosAppId: '1056182234' },
   amazon: { androidPackageId: 'com.amazon.mShop.android.shopping', iosAppId: '297606951' },
   primevideo: { androidPackageId: 'com.amazon.avod.thirdpartyclient', iosAppId: '545519333' },
-  hulu: { androidPackageId: 'com.hulu.plus', iosAppId: '376510438' },
+  // 2026-11-17: Play AU og:title 200 com.hulu.plus; main Hulu iOS (376510438) not listed in AU
+  hulu: { androidPackageId: 'com.hulu.plus', iosAppId: null },
   twitch: { androidPackageId: 'tv.twitch.android.app', iosAppId: '460177396' },
   shazam: { androidPackageId: 'com.shazam.android', iosAppId: '284993459' },
   soundcloud: { androidPackageId: 'com.soundcloud.android', iosAppId: '336353151' },
@@ -82,19 +83,30 @@ const KNOWN_APPS = {
   snapseed: { androidPackageId: 'com.niksoftware.snapseed', iosAppId: '439438619' },
   vsco: { androidPackageId: 'com.vsco.cam', iosAppId: '588013838' },
   picsart: { androidPackageId: 'com.picsart.studio', iosAppId: '587366035' },
+  // 2026-11-17: Play AU og:title 200; iTunes AU lookup id 997362197
   inshot: { androidPackageId: 'com.camerasideas.instashot', iosAppId: '997362197' },
-  kinemaster: { androidPackageId: 'com.nexstreaming.app.kinemasterfree', iosAppId: '1609369950' },
+  kinemaster: { androidPackageId: 'com.nexstreaming.app.kinemasterfree', iosAppId: '1609369954' },
   spotifyandroid: { androidPackageId: 'com.spotify.music', iosAppId: '324684580' },
+  // 2026-11-17: Play AU + iTunes AU verified
+  applemusic: { androidPackageId: 'com.apple.android.music', iosAppId: '1108187390' },
+  tidal: { androidPackageId: 'com.aspiro.tidal', iosAppId: '913943275' },
+  youtubemusic: { androidPackageId: 'com.google.android.apps.youtube.music', iosAppId: '1017492454' },
+  vn: { androidPackageId: 'com.frontrow.vlog', iosAppId: '1343581380' },
+  vnphotovideoeditor: { androidPackageId: 'com.frontrow.vlog', iosAppId: '1343581380' },
+  vnvideoeditor: { androidPackageId: 'com.frontrow.vlog', iosAppId: '1343581380' },
+  // 2026-11-17: Play AU og:title 200; no AU App Store listing found
+  powerdirector: { androidPackageId: 'com.cyberlink.powerdirector.DRA140225_01', iosAppId: null },
 };
 
 export function lookupKnownApp(app) {
   if (!app) return null;
 
+  // Exact id/name (and "Name: subtitle" prefix) only — never first-word
+  // matches like "YouTube Music" → youtube.
   const keys = [
     normalizeKey(app.id),
     normalizeKey(app.name),
     normalizeKey(app.name?.split(':')[0]),
-    normalizeKey(app.name?.split(' ')[0]),
   ].filter(Boolean);
 
   for (const key of keys) {

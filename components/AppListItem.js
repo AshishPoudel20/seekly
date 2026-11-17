@@ -1,24 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   Animated,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AppIcon from './AppIcon';
 import { COLORS } from '../theme';
 import { impactLight } from '../utils/haptics';
-import { getAppAccent } from '../utils/gradients';
 import { openStorePage } from '../utils/storeLink';
 
 export default function AppListItem({ app, index, onPress }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translate = useRef(new Animated.Value(20)).current;
   const scale = useRef(new Animated.Value(1)).current;
-  const [iconFailed, setIconFailed] = useState(false);
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, {
@@ -49,9 +46,6 @@ export default function AppListItem({ app, index, onPress }) {
     openStorePage(app);
   };
 
-  const hasIcon = app.iconUrl && !iconFailed;
-  const accent = getAppAccent(app);
-
   const pricingColor =
     app.pricing === 'Free' ? COLORS.success :
     app.pricing === 'Freemium' ? COLORS.gold :
@@ -74,19 +68,7 @@ export default function AppListItem({ app, index, onPress }) {
           <View style={styles.row}>
             {/* Icon */}
             <View style={styles.iconContainer}>
-              {hasIcon ? (
-                <Image
-                  source={{ uri: app.iconUrl }}
-                  style={styles.icon}
-                  onError={() => setIconFailed(true)}
-                />
-              ) : (
-                <View style={[styles.iconFallback, { backgroundColor: accent }]}>
-                  <Text style={styles.iconLetter}>
-                    {(app.name || '?').charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+              <AppIcon app={app} size={56} borderRadius={14} />
             </View>
 
             {/* Title + Meta */}
@@ -149,23 +131,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: COLORS.surfaceHi,
-  },
-  icon: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-  },
-  iconFallback: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconLetter: {
-    fontFamily: 'Fraunces_900Black',
-    fontSize: 26,
-    color: '#fff',
   },
   textCol: {
     flex: 1,

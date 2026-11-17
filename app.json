@@ -5,10 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "backgroundColor": "#0A0612",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.seekly.app"
@@ -16,7 +12,8 @@
     "android": {
       "package": "com.seekly.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0A0612"
+        "backgroundColor": "#0A0612",
+        "foregroundImage": "./assets/seekly-icon.png"
       }
     },
     "web": {
@@ -28,7 +25,17 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0A0612",
+          "image": "./assets/seekly-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ]
     ]
   }
 }

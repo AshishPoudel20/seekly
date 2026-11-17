@@ -7,23 +7,42 @@ function normalizeName(name) {
   return (name || '').trim().toLowerCase();
 }
 
-async function lookupIosAppId(appName) {
-  const key = normalizeName(appName);
-  if (!key) return null;
+function playDetailsUrl(packageId) {
+  return `https://play.google.com/store/apps/details?id=${encodeURIComponent(packageId)}&gl=AU&hl=en_AU`;
+}
+
+function playSearchUrl(name) {
+  return `https://play.google.com/store/search?q=${encodeURIComponent(name)}&c=apps&gl=AU&hl=en_AU`;
+}
+
+function appStoreUrl(iosAppId) {
+  return `https://apps.apple.com/au/app/id${iosAppId}`;
+}
+
+async function lookupIosAppId(appName, bundleIdHint = null) {
+  const key = `${normalizeName(appName)}::${bundleIdHint || ''}`;
+  if (!normalizeName(appName) && !bundleIdHint) return null;
   if (iosLookupCache.has(key)) return iosLookupCache.get(key);
 
   try {
     const res = await fetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(appName)}&entity=software&limit=8`
+      `https://itunes.apple.com/search?term=${encodeURIComponent(appName)}&entity=software&country=au&limit=10`
     );
     if (!res.ok) return null;
 
     const data = await res.json();
     const results = data.results || [];
-    const exact = results.find(
-      (item) => normalizeName(item.trackName) === key
-    );
-    const match = exact || results[0];
+    const nameKey = normalizeName(appName);
+
+    let match = null;
+    if (bundleIdHint) {
+      match = results.find((item) => item.bundleId === bundleIdHint);
+    }
+    if (!match) {
+      match = results.find((item) => normalizeName(item.trackName) === nameKey);
+    }
+    if (!match) match = results[0];
+
     const id = match?.trackId ? String(match.trackId) : null;
     iosLookupCache.set(key, id);
     return id;
@@ -40,45 +59,40 @@ export async function openStorePage(app) {
   if (!app) return;
 
   const name = app.name || 'app';
-  const { androidPackageId, iosAppId: knownIosId } = resolveStoreIds(app);
+  // Prefer IDs already verified/enriched by the backend when present
+  const resolved = resolveStoreIds(app);
+  const androidPackageId = app.androidPackageId || resolved.androidPackageId;
+  let iosAppId = app.iosAppId || resolved.iosAppId;
 
   if (Platform.OS === 'android') {
     if (androidPackageId) {
-      return openUrl(
-        `https://play.google.com/store/apps/details?id=${androidPackageId}`
-      );
+      return openUrl(playDetailsUrl(androidPackageId));
     }
-    return openUrl(
-      `https://play.google.com/store/search?q=${encodeURIComponent(name)}&c=apps`
-    );
+    // Prefer AU Play search over a broken detail page
+    return openUrl(playSearchUrl(name));
   }
 
   if (Platform.OS === 'ios') {
-    let iosAppId = knownIosId;
     if (!iosAppId) {
       iosAppId = await lookupIosAppId(name);
     }
     if (iosAppId) {
-      return openUrl(`https://apps.apple.com/app/id${iosAppId}`);
+      return openUrl(appStoreUrl(iosAppId));
     }
     return openUrl(
-      `https://apps.apple.com/search?term=${encodeURIComponent(name)}&entity=software`
+      `https://apps.apple.com/au/search?term=${encodeURIComponent(name)}`
     );
   }
 
-  // Web: prefer direct store links when we have IDs
-  if (androidPackageId) {
-    return openUrl(
-      `https://play.google.com/store/apps/details?id=${androidPackageId}`
-    );
+  // Web: prefer AU store links
+  if (app.playStoreUrl) return openUrl(app.playStoreUrl);
+  if (androidPackageId) return openUrl(playDetailsUrl(androidPackageId));
+  if (app.appStoreUrl) return openUrl(app.appStoreUrl);
+  if (iosAppId) return openUrl(appStoreUrl(iosAppId));
+  if (!iosAppId) {
+    iosAppId = await lookupIosAppId(name);
+    if (iosAppId) return openUrl(appStoreUrl(iosAppId));
   }
-  if (knownIosId) {
-    return openUrl(`https://apps.apple.com/app/id${knownIosId}`);
-  }
-  if (app.url) {
-    return openUrl(app.url);
-  }
-  return openUrl(
-    `https://www.google.com/search?q=${encodeURIComponent(`${name} app download`)}`
-  );
+  if (app.url) return openUrl(app.url);
+  return openUrl(playSearchUrl(name));
 }

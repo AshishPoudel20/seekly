@@ -16,7 +16,7 @@ import { useLayoutWidth } from '../utils/layout';
 
 const HERO_HEIGHT = 540;
 
-export default function HeroSpotlight({ app, contextLine }) {
+export default function HeroSpotlight({ app, contextLine, onPress }) {
   const width = useLayoutWidth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -28,7 +28,8 @@ export default function HeroSpotlight({ app, contextLine }) {
     ]).start();
   }, [app?.id]);
 
-  const handleGet = async () => {
+  const handleGet = (e) => {
+    e?.stopPropagation?.();
     impactMedium();
     openStorePage(app);
   };
@@ -38,7 +39,10 @@ export default function HeroSpotlight({ app, contextLine }) {
   const platforms = getPlatforms(app);
 
   return (
-    <View style={[styles.container, { width, height: HERO_HEIGHT }]}>
+    <Pressable
+      onPress={() => onPress?.(app)}
+      style={[styles.container, { width, height: HERO_HEIGHT }]}
+    >
       <PosterArt app={app} width={width} height={HERO_HEIGHT} size="hero" />
 
       <LinearGradient
@@ -87,7 +91,7 @@ export default function HeroSpotlight({ app, contextLine }) {
           <Text style={styles.getBtnArrow}>→</Text>
         </Pressable>
       </Animated.View>
-    </View>
+    </Pressable>
   );
 }
 

@@ -17,14 +17,14 @@ export default function HomeCategoryRow({ category, onAppPress, rowIndex = 0 }) 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
-        delay: rowIndex * 80,
+        duration: 280,
+        delay: rowIndex * 40,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 500,
-        delay: rowIndex * 80,
+        duration: 280,
+        delay: rowIndex * 40,
         useNativeDriver: true,
       }),
     ]).start();
