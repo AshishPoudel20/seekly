@@ -2,6 +2,15 @@
 
 An AI-powered app discovery engine. Describe what you want to do in plain language — "edit videos on my phone," "split a bill with friends," "learn guitar" — and Seekly recommends the apps that actually fit, with a clear explanation of why each one made the list.
 
+## Try it on Android
+
+- **Download:** [Seekly 1.0.0 Android preview APK](https://github.com/AshishPoudel20/seekly/releases/download/v1.0.0-preview/Seekly-1.0.0-preview.apk)
+- **Release page:** [v1.0.0-preview](https://github.com/AshishPoudel20/seekly/releases/tag/v1.0.0-preview)
+- **Backup download (Expo):** [APK artifact](https://expo.dev/artifacts/eas/RyNvhKImSrSufmNvxSi9JKYK6bDXsnRY7UISx6uflVc.apk)
+- **Install:** download the APK on an Android phone, open it, and allow installs from this source when prompted.
+- **Try it:** search for something like "edit videos" or "learn Spanish", open an app's details, and tap the store button.
+- AI results run on a free tier and may be limited on busy days; the app then shows basic matches.
+- Android only for now.
 
 ## What it does
 
